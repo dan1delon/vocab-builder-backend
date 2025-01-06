@@ -2,14 +2,14 @@ import { Router } from 'express';
 import { ctrlWrapper } from '../utils/ctrlWrapper.js';
 import { validateBody } from '../middlewares/validateBody.js';
 import { authenticate } from '../middlewares/authenticate.js';
-import { createNewWordSchema, editWordSchema } from '../validation/words.js';
+import { createNewWordSchema, editWordSchema } from '../validation/word.js';
 import {
-  getAllWordsController,
-  getUsersWordsController,
+  getCategoriesController,
   createNewWordController,
   editWordController,
+  getAllWordsController,
+  getUsersWordsController,
   deleteWordController,
-  getUsersStatisticsController,
   getUsersTasksController,
   postAnswersController,
 } from '../controllers/words.js';
@@ -19,6 +19,8 @@ const router = Router();
 router.get('/', ctrlWrapper(getAllWordsController));
 
 router.get('/user', authenticate, ctrlWrapper(getUsersWordsController));
+
+router.get('/categories', ctrlWrapper(getCategoriesController));
 
 router.post(
   '/',
@@ -35,12 +37,6 @@ router.patch(
 );
 
 router.delete('/:id', authenticate, ctrlWrapper(deleteWordController));
-
-router.get(
-  '/statistics',
-  authenticate,
-  ctrlWrapper(getUsersStatisticsController),
-);
 
 router.get('/tasks', authenticate, ctrlWrapper(getUsersTasksController));
 
