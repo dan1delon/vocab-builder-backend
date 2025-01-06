@@ -18,14 +18,14 @@ import {
 
 const router = Router();
 
-router.get('/', ctrlWrapper(getAllWordsController));
+router.get('/all', ctrlWrapper(getAllWordsController));
 
-router.get('/user', authenticate, ctrlWrapper(getUsersWordsController));
+router.get('/own', authenticate, ctrlWrapper(getUsersWordsController));
 
 router.get('/categories', ctrlWrapper(getCategoriesController));
 
 router.post(
-  '/',
+  '/create',
   authenticate,
   validateBody(createNewWordSchema),
   ctrlWrapper(createNewWordController),
@@ -34,13 +34,13 @@ router.post(
 router.post('/add/:id', authenticate, ctrlWrapper(addWordController));
 
 router.patch(
-  '/:id',
+  '/edit/:id',
   authenticate,
   validateBody(editWordSchema),
   ctrlWrapper(editWordController),
 );
 
-router.delete('/:id', authenticate, ctrlWrapper(deleteWordController));
+router.delete('/delete/:id', authenticate, ctrlWrapper(deleteWordController));
 
 router.get('/tasks', authenticate, ctrlWrapper(getTasksController));
 
