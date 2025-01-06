@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+import { model, Schema } from 'mongoose';
 
-const wordSchema = new mongoose.Schema({
+const wordSchema = new Schema({
   en: { type: String, required: true },
   ua: { type: String, required: true },
   category: {
@@ -17,12 +17,13 @@ const wordSchema = new mongoose.Schema({
       'conjunction',
       'phrasal verb',
       'functional phrase',
+      'idiom',
     ],
     required: true,
   },
   isIrregular: { type: Boolean, default: false },
-  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   progress: { type: Number, default: 0 },
 });
 
-module.exports = mongoose.model('Word', wordSchema);
+export const WordCollection = model('words', wordSchema);

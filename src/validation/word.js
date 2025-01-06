@@ -1,6 +1,6 @@
-const Joi = require('joi');
+import Joi from 'joi';
 
-const wordSchema = Joi.object({
+export const wordSchema = Joi.object({
   en: Joi.string().required(),
   ua: Joi.string().required(),
   category: Joi.string()
@@ -22,7 +22,7 @@ const wordSchema = Joi.object({
   isIrregular: Joi.boolean(),
 });
 
-const createNewWordSchema = Joi.object({
+export const createNewWordSchema = Joi.object({
   en: Joi.string().min(1).max(100).required(),
   ua: Joi.string().min(1).max(100).required(),
   category: Joi.string()
@@ -44,7 +44,7 @@ const createNewWordSchema = Joi.object({
   isIrregular: Joi.boolean().required(),
 });
 
-const editWordSchema = Joi.object({
+export const editWordSchema = Joi.object({
   en: Joi.string().min(1).max(100).optional(),
   ua: Joi.string().min(1).max(100).optional(),
   category: Joi.string()
@@ -65,5 +65,3 @@ const editWordSchema = Joi.object({
     .optional(),
   isIrregular: Joi.boolean().optional(),
 }).min(1);
-
-module.exports = { wordSchema, createNewWordSchema, editWordSchema };
