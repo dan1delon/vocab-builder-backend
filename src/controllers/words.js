@@ -1,4 +1,5 @@
 import { WordCollection } from '../db/models/word.js';
+import { GlobalWordCollection } from '../db/models/globalWords.js';
 import { TasksCollection } from '../db/models/task.js';
 import { AnswerCollection } from '../db/models/answer.js';
 
@@ -36,6 +37,17 @@ export const createNewWordController = async (req, res) => {
 
     if (wordExists) {
       return res.status(409).json({ message: 'Such a word already exists' });
+    }
+
+    const globalWordExists = await GlobalWordCollection.findOne({ en, ua });
+    if (!globalWordExists) {
+      await GlobalWordCollection.create({
+        en,
+        ua,
+        category,
+        isIrregular: Boolean(isIrregular),
+        createdBy: req.user.id,
+      });
     }
 
     const word = await WordCollection.create({
@@ -83,17 +95,19 @@ export const getAllWordsController = async (req, res) => {
     const { keyword, category, isIrregular, page = 1, limit = 7 } = req.query;
 
     const query = {
-      owner: { $ne: req.user.id },
       ...(keyword && { en: { $regex: keyword, $options: 'i' } }),
       ...(category && { category }),
       ...(isIrregular && { isIrregular: isIrregular === 'true' }),
     };
 
-    const words = await WordCollection.find(query, 'en ua category isIrregular')
+    const words = await GlobalWordCollection.find(
+      query,
+      'en ua category isIrregular',
+    )
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit));
 
-    const total = await WordCollection.countDocuments(query);
+    const total = await GlobalWordCollection.countDocuments(query);
 
     res.status(200).json({
       results: words,
@@ -145,6 +159,16 @@ export const deleteWordController = async (req, res) => {
 
     if (!word) return res.status(404).json({ message: 'Word not found' });
 
+    await TasksCollection.deleteMany({ wordId: word._id });
+
+    const isWordUsed = await WordCollection.findOne({
+      en: word.en,
+      ua: word.ua,
+    });
+    if (!isWordUsed) {
+      await GlobalWordCollection.findOneAndDelete({ en: word.en, ua: word.ua });
+    }
+
     res.status(200).json({ message: 'This word was deleted', id });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -155,7 +179,7 @@ export const addWordController = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const word = await WordCollection.findById(id);
+    const word = await GlobalWordCollection.findById(id);
 
     if (!word) {
       return res.status(404).json({ message: 'Word not found' });
@@ -229,7 +253,7 @@ export const getTasksController = async (req, res) => {
       owner: req.user.id,
       isCompleted: false,
     })
-      .populate('wordId', 'ua')
+      .populate({ path: 'wordId', select: 'ua' })
       .select('wordId taskType');
 
     const result = tasks.map((task) => ({
@@ -252,19 +276,25 @@ export const postAnswersController = async (req, res) => {
       return res.status(400).json({ message: 'Invalid data' });
     }
 
+    const userAnswers = answers.map((answer) => {
+      if (!answer._id || !answer.task) {
+        throw new Error('Invalid answer format');
+      }
+
+      return {
+        wordId: answer._id,
+        taskType: answer.task,
+        owner: req.user.id,
+      };
+    });
+
+    await AnswerCollection.insertMany(userAnswers);
+
     const task = await TasksCollection.findById(taskId);
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
-
-    const userAnswers = answers.map((answer) => ({
-      ...answer,
-      owner: req.user.id,
-      task: taskId,
-    }));
-
-    await AnswerCollection.insertMany(userAnswers);
 
     task.isCompleted = true;
     await task.save();
