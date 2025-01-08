@@ -22,7 +22,7 @@ const wordSchema = new Schema({
     required: true,
   },
   isIrregular: { type: Boolean, default: false },
-  owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  owner: { type: Schema.Types.ObjectId, ref: 'users', required: true },
   progress: { type: Number, default: 0 },
 });
 

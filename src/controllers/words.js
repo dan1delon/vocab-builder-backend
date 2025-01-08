@@ -1,7 +1,6 @@
 import { WordCollection } from '../db/models/word.js';
 import { GlobalWordCollection } from '../db/models/globalWords.js';
 import { TasksCollection } from '../db/models/task.js';
-import { AnswerCollection } from '../db/models/answer.js';
 
 export const getCategoriesController = (req, res) => {
   const categories = [
@@ -59,13 +58,31 @@ export const createNewWordController = async (req, res) => {
     });
 
     const tasks = [
-      { wordId: word._id, taskType: 'en', owner: req.user.id },
-      { wordId: word._id, taskType: 'ua', owner: req.user.id },
+      {
+        wordId: word._id,
+        task: 'en',
+        ua: ua,
+        owner: req.user.id,
+      },
+      {
+        wordId: word._id,
+        task: 'ua',
+        en: en,
+        owner: req.user.id,
+      },
     ];
 
     await TasksCollection.insertMany(tasks);
 
-    res.status(201).json(word);
+    const formattedTasks = tasks.map((task) => ({
+      _id: task.wordId,
+      ua: task.ua,
+      task: task.task,
+    }));
+
+    res.status(201).json({
+      words: formattedTasks,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -253,14 +270,24 @@ export const getTasksController = async (req, res) => {
       owner: req.user.id,
       isCompleted: false,
     })
-      .populate({ path: 'wordId', select: 'ua' })
+      .populate({ path: 'wordId', select: 'en ua' })
       .select('wordId taskType');
 
-    const result = tasks.map((task) => ({
-      _id: task._id,
-      ua: task.wordId.ua,
-      task: task.taskType,
-    }));
+    const result = tasks.map((task) => {
+      const { en, ua } = task.wordId;
+
+      return task.taskType === 'en'
+        ? {
+            _id: task._id,
+            ua,
+            task: 'en',
+          }
+        : {
+            _id: task._id,
+            en: en,
+            task: 'ua',
+          };
+    });
 
     res.status(200).json({ words: result });
   } catch (error) {
@@ -276,30 +303,33 @@ export const postAnswersController = async (req, res) => {
       return res.status(400).json({ message: 'Invalid data' });
     }
 
-    const userAnswers = answers.map((answer) => {
-      if (!answer._id || !answer.task) {
-        throw new Error('Invalid answer format');
-      }
-
-      return {
-        wordId: answer._id,
-        taskType: answer.task,
-        owner: req.user.id,
-      };
+    const task = await TasksCollection.findById(taskId).populate({
+      path: 'wordId',
+      select: 'en ua',
     });
-
-    await AnswerCollection.insertMany(userAnswers);
-
-    const task = await TasksCollection.findById(taskId);
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
+    const result = answers.map((answer) => {
+      if (!answer._id || !answer.task) {
+        throw new Error('Invalid answer format');
+      }
+
+      return {
+        _id: answer._id,
+        en: task.wordId.en,
+        ua: task.wordId.ua,
+        task: answer.task,
+        isDone: task.isCompleted,
+      };
+    });
+
     task.isCompleted = true;
     await task.save();
 
-    res.status(201).json({ message: 'Answers saved and task completed' });
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -22,7 +22,7 @@ const globalWordsSchema = new Schema({
     required: true,
   },
   isIrregular: { type: Boolean, default: false },
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'users', required: true },
 });
 
 export const GlobalWordCollection = model('global-words', globalWordsSchema);

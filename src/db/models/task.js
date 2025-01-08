@@ -4,12 +4,12 @@ const taskSchema = new Schema(
   {
     owner: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'users',
       required: true,
     },
     wordId: {
       type: Schema.Types.ObjectId,
-      ref: 'Word',
+      ref: 'words',
       required: true,
     },
     taskType: {
