@@ -61,27 +61,25 @@ export const createNewWordController = async (req, res) => {
       {
         wordId: word._id,
         task: 'en',
-        ua: ua,
         owner: req.user.id,
       },
       {
         wordId: word._id,
         task: 'ua',
-        en: en,
         owner: req.user.id,
       },
     ];
 
     await TasksCollection.insertMany(tasks);
 
-    const formattedTasks = tasks.map((task) => ({
-      _id: task.wordId,
-      ua: task.ua,
-      task: task.task,
-    }));
-
     res.status(201).json({
-      words: formattedTasks,
+      _id: word._id,
+      en: word.en,
+      ua: word.ua,
+      category: word.category,
+      isIrregular: word.isIrregular,
+      owner: word.owner,
+      progress: 0,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -297,37 +295,57 @@ export const getTasksController = async (req, res) => {
 
 export const postAnswersController = async (req, res) => {
   try {
-    const { taskId, answers } = req.body;
+    const answers = req.body;
 
-    if (!taskId || !Array.isArray(answers)) {
+    if (!Array.isArray(answers) || answers.length === 0) {
       return res.status(400).json({ message: 'Invalid data' });
     }
 
-    const task = await TasksCollection.findById(taskId).populate({
-      path: 'wordId',
-      select: 'en ua',
-    });
+    const result = await Promise.all(
+      answers.map(async (answer) => {
+        const word = await WordCollection.findById(answer._id);
 
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
+        if (!word) {
+          throw new Error(`Word not found for ID: ${answer._id}`);
+        }
 
-    const result = answers.map((answer) => {
-      if (!answer._id || !answer.task) {
-        throw new Error('Invalid answer format');
-      }
+        const task = await TasksCollection.findOne({
+          wordId: word._id,
+          taskType: answer.task,
+          owner: req.user.id,
+        });
 
-      return {
-        _id: answer._id,
-        en: task.wordId.en,
-        ua: task.wordId.ua,
-        task: answer.task,
-        isDone: task.isCompleted,
-      };
-    });
+        if (!task) {
+          throw new Error(
+            `Task not found for word ID: ${word._id} and task type: ${answer.task}`,
+          );
+        }
 
-    task.isCompleted = true;
-    await task.save();
+        const isCorrect =
+          (answer.task === 'en' && word.en === answer.answer) ||
+          (answer.task === 'ua' && word.ua === answer.answer);
+
+        if (isCorrect) {
+          const newProgress = Math.min(word.progress + 50, 100);
+          await WordCollection.findByIdAndUpdate(word._id, {
+            progress: newProgress,
+          });
+        }
+
+        if (task.isCompleted) {
+          await TasksCollection.findByIdAndDelete(task._id);
+        }
+
+        return {
+          _id: word._id,
+          en: word.en,
+          ua: word.ua,
+          task: answer.task,
+          isDone: task.isCompleted,
+          progress: word.progress,
+        };
+      }),
+    );
 
     res.status(200).json(result);
   } catch (error) {

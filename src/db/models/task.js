@@ -12,7 +12,7 @@ const taskSchema = new Schema(
       ref: 'words',
       required: true,
     },
-    taskType: {
+    task: {
       type: String,
       enum: ['en', 'ua'],
       required: true,
