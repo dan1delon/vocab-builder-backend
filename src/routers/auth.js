@@ -24,7 +24,7 @@ import { authenticate } from '../middlewares/authenticate.js';
 const router = Router();
 
 router.post(
-  '/register',
+  '/signup',
   validateBody(registerUserSchema),
   ctrlWrapper(registerUserController),
 );
