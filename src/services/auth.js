@@ -27,6 +27,16 @@ export const registerUser = async (payload) => {
     password: encryptedPassword,
   });
 
+  const token = jwt.sign(
+    {
+      id: newUser._id,
+      email: newUser.email,
+      name: newUser.name,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' },
+  );
+
   const accessToken = randomBytes(30).toString('base64');
   const refreshToken = randomBytes(30).toString('base64');
 
@@ -39,13 +49,9 @@ export const registerUser = async (payload) => {
   });
 
   return {
-    user: {
-      id: newUser._id,
-      email: newUser.email,
-      name: newUser.name,
-    },
-    accessToken,
-    refreshToken,
+    email: newUser.email,
+    name: newUser.name,
+    token,
   };
 };
 
