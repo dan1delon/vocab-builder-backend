@@ -18,11 +18,11 @@ import {
 
 const router = Router();
 
-router.get('/all', ctrlWrapper(getAllWordsController));
+router.get('/all', authenticate, ctrlWrapper(getAllWordsController));
 
 router.get('/own', authenticate, ctrlWrapper(getUsersWordsController));
 
-router.get('/categories', ctrlWrapper(getCategoriesController));
+router.get('/categories', authenticate, ctrlWrapper(getCategoriesController));
 
 router.post(
   '/create',
