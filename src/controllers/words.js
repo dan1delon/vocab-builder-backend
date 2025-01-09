@@ -60,12 +60,12 @@ export const createNewWordController = async (req, res) => {
     const tasks = [
       {
         wordId: word._id,
-        task: 'en',
+        taskType: 'en',
         owner: req.user.id,
       },
       {
         wordId: word._id,
-        task: 'ua',
+        taskType: 'ua',
         owner: req.user.id,
       },
     ];
@@ -194,6 +194,10 @@ export const addWordController = async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (!id) {
+      return res.status(400).json({ message: 'Word ID is required' });
+    }
+
     const word = await GlobalWordCollection.findById(id);
 
     if (!word) {
@@ -216,6 +220,7 @@ export const addWordController = async (req, res) => {
       category: word.category,
       isIrregular: word.isIrregular,
       owner: req.user.id,
+      progress: 0,
     });
 
     const tasks = [
@@ -231,10 +236,27 @@ export const addWordController = async (req, res) => {
       },
     ];
 
-    await TasksCollection.insertMany(tasks);
+    const createdTasks = await TasksCollection.insertMany(tasks);
 
-    res.status(201).json(newWord);
+    res.status(201).json({
+      word: {
+        _id: newWord._id,
+        en: newWord.en,
+        ua: newWord.ua,
+        category: newWord.category,
+        isIrregular: newWord.isIrregular,
+        owner: newWord.owner,
+        progress: newWord.progress,
+      },
+      tasks: createdTasks.map((task) => ({
+        _id: task._id,
+        taskType: task.taskType,
+        wordId: task.wordId,
+        owner: task.owner,
+      })),
+    });
   } catch (error) {
+    console.error('Error in addWordController:', error.message);
     res.status(500).json({ message: error.message });
   }
 };
@@ -274,20 +296,54 @@ export const getTasksController = async (req, res) => {
     const result = tasks.map((task) => {
       const { en, ua } = task.wordId;
 
-      return task.taskType === 'en'
-        ? {
-            _id: task._id,
-            ua,
-            task: 'en',
-          }
-        : {
-            _id: task._id,
-            en: en,
-            task: 'ua',
-          };
+      if (task.taskType === 'en') {
+        return {
+          _id: task._id,
+          ua,
+          task: 'en',
+        };
+      } else {
+        return {
+          _id: task._id,
+          en,
+          task: 'ua',
+        };
+      }
     });
 
-    res.status(200).json({ words: result });
+    const formattedResult = [];
+    const seenWords = new Set();
+
+    result.forEach((task) => {
+      if (!seenWords.has(task._id)) {
+        const enTask = result.find(
+          (t) => t._id === task._id && t.task === 'en',
+        );
+        const uaTask = result.find(
+          (t) => t._id === task._id && t.task === 'ua',
+        );
+
+        if (enTask) {
+          formattedResult.push({
+            _id: enTask._id,
+            ua: enTask.ua,
+            task: 'en',
+          });
+        }
+
+        if (uaTask) {
+          formattedResult.push({
+            _id: uaTask._id,
+            en: uaTask.en,
+            task: 'ua',
+          });
+        }
+
+        seenWords.add(task._id);
+      }
+    });
+
+    res.status(200).json({ words: formattedResult });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
