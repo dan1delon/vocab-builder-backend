@@ -15,15 +15,15 @@ import { getUserInfo } from '../services/auth.js';
 export const registerUserController = async (req, res) => {
   const user = await registerUser(req.body);
 
-  res.status(201).json({
-    email: user.email,
-    name: user.name,
-    token: user.token,
+  res.json({
+    status: 201,
+    message: 'Successfully registered a user!',
+    data: user,
   });
 };
 
 export const loginUserController = async (req, res) => {
-  const { email, name, token, session } = await loginUser(req.body);
+  const session = await loginUser(req.body);
 
   res.cookie('refreshToken', session.refreshToken, {
     httpOnly: true,
@@ -39,10 +39,12 @@ export const loginUserController = async (req, res) => {
     secure: true,
   });
 
-  res.status(200).json({
-    email,
-    name,
-    token,
+  res.json({
+    status: 200,
+    message: 'Successfully logged in a user!',
+    data: {
+      accessToken: session.accessToken,
+    },
   });
 };
 
