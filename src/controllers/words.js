@@ -60,12 +60,12 @@ export const createNewWordController = async (req, res) => {
     const tasks = [
       {
         wordId: word._id,
-        taskType: 'en',
+        task: 'en',
         owner: req.user.id,
       },
       {
         wordId: word._id,
-        taskType: 'ua',
+        task: 'ua',
         owner: req.user.id,
       },
     ];
@@ -226,12 +226,12 @@ export const addWordController = async (req, res) => {
     const tasks = [
       {
         wordId: newWord._id,
-        taskType: 'en',
+        task: 'en',
         owner: req.user.id,
       },
       {
         wordId: newWord._id,
-        taskType: 'ua',
+        task: 'ua',
         owner: req.user.id,
       },
     ];
@@ -311,40 +311,9 @@ export const getTasksController = async (req, res) => {
       }
     });
 
-    const formattedResult = [];
-    const seenWords = new Set();
-
-    result.forEach((task) => {
-      if (!seenWords.has(task._id)) {
-        const enTask = result.find(
-          (t) => t._id === task._id && t.task === 'en',
-        );
-        const uaTask = result.find(
-          (t) => t._id === task._id && t.task === 'ua',
-        );
-
-        if (enTask) {
-          formattedResult.push({
-            _id: enTask._id,
-            ua: enTask.ua,
-            task: 'en',
-          });
-        }
-
-        if (uaTask) {
-          formattedResult.push({
-            _id: uaTask._id,
-            en: uaTask.en,
-            task: 'ua',
-          });
-        }
-
-        seenWords.add(task._id);
-      }
-    });
-
-    res.status(200).json({ words: formattedResult });
+    res.status(200).json(result);
   } catch (error) {
+    console.error('Error in getTasksController:', error.message);
     res.status(500).json({ message: error.message });
   }
 };
@@ -367,7 +336,7 @@ export const postAnswersController = async (req, res) => {
 
         const task = await TasksCollection.findOne({
           wordId: word._id,
-          taskType: answer.task,
+          task: answer.task,
           owner: req.user.id,
         });
 
