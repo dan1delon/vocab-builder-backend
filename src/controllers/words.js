@@ -379,7 +379,8 @@ export const postAnswersController = async (req, res) => {
         }
 
         const isCorrect =
-          task === 'en' && word.en === en && task === 'ua' && word.ua === ua;
+          (task === 'en' && word.en === en) ||
+          (task === 'ua' && word.ua === ua);
 
         let newProgress = word.progress;
 
