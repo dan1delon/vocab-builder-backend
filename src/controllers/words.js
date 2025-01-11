@@ -57,20 +57,18 @@ export const createNewWordController = async (req, res) => {
       owner: req.user.id,
     });
 
-    const tasks = [
-      {
-        wordId: word._id,
-        task: 'en',
-        owner: req.user.id,
-      },
+    await TasksCollection.insertMany([
       {
         wordId: word._id,
         task: 'ua',
         owner: req.user.id,
       },
-    ];
-
-    await TasksCollection.insertMany(tasks);
+      {
+        wordId: word._id,
+        task: 'en',
+        owner: req.user.id,
+      },
+    ]);
 
     res.status(201).json({
       _id: word._id,
@@ -98,6 +96,27 @@ export const editWordController = async (req, res) => {
     );
 
     if (!word) return res.status(404).json({ message: 'Word not found' });
+
+    await TasksCollection.updateMany(
+      { wordId: word._id },
+      { $set: { wordId: word._id, owner: req.user.id } },
+    );
+
+    if (!(await TasksCollection.exists({ wordId: word._id, task: 'ua' }))) {
+      await TasksCollection.create({
+        wordId: word._id,
+        task: 'ua',
+        owner: req.user.id,
+      });
+    }
+
+    if (!(await TasksCollection.exists({ wordId: word._id, task: 'en' }))) {
+      await TasksCollection.create({
+        wordId: word._id,
+        task: 'en',
+        owner: req.user.id,
+      });
+    }
 
     res.status(200).json(word);
   } catch (error) {
@@ -223,20 +242,18 @@ export const addWordController = async (req, res) => {
       progress: 0,
     });
 
-    const tasks = [
-      {
-        wordId: newWord._id,
-        task: 'en',
-        owner: req.user.id,
-      },
+    await TasksCollection.insertMany([
       {
         wordId: newWord._id,
         task: 'ua',
         owner: req.user.id,
       },
-    ];
-
-    const createdTasks = await TasksCollection.insertMany(tasks);
+      {
+        wordId: newWord._id,
+        task: 'en',
+        owner: req.user.id,
+      },
+    ]);
 
     res.status(201).json({
       word: {
@@ -248,12 +265,6 @@ export const addWordController = async (req, res) => {
         owner: newWord.owner,
         progress: newWord.progress,
       },
-      tasks: createdTasks.map((task) => ({
-        _id: task._id,
-        taskType: task.taskType,
-        wordId: task.wordId,
-        owner: task.owner,
-      })),
     });
   } catch (error) {
     console.error('Error in addWordController:', error.message);
@@ -286,30 +297,54 @@ export const getUsersStatisticsController = async (req, res) => {
 
 export const getTasksController = async (req, res) => {
   try {
+    const userId = req.user.id;
+
     const tasks = await TasksCollection.find({
-      owner: req.user.id,
+      owner: userId,
       isCompleted: false,
     })
       .populate({ path: 'wordId', select: 'en ua' })
-      .select('wordId taskType');
+      .select('wordId task')
+      .exec();
 
-    const result = tasks.map((task) => {
+    if (!tasks || tasks.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    const taskMap = new Map();
+
+    tasks.forEach((task) => {
+      if (!task.wordId) {
+        console.warn('Task without wordId:', task);
+        return;
+      }
+
       const { en, ua } = task.wordId;
 
-      if (task.taskType === 'en') {
-        return {
+      if (!taskMap.has(task.wordId.toString())) {
+        taskMap.set(task.wordId.toString(), { en, ua, tasks: [] });
+      }
+
+      const existingTasks = taskMap.get(task.wordId.toString()).tasks;
+
+      if (task.task === 'en') {
+        existingTasks.push({
           _id: task._id,
           ua,
           task: 'en',
-        };
-      } else {
-        return {
+        });
+      } else if (task.task === 'ua') {
+        existingTasks.push({
           _id: task._id,
           en,
           task: 'ua',
-        };
+        });
       }
     });
+
+    const result = Array.from(taskMap.values()).flatMap(
+      (taskData) => taskData.tasks,
+    );
 
     res.status(200).json(result);
   } catch (error) {
