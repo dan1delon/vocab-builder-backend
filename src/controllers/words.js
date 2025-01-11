@@ -366,7 +366,7 @@ export const postAnswersController = async (req, res) => {
     for (const answer of answers) {
       const { _id: wordId, ua, en, task } = answer;
 
-      if (!wordId || !task || (!ua && !en)) {
+      if (!wordId || !task || !(ua || en)) {
         results.push({ _id: wordId, ua, en, task, isDone: false });
         continue;
       }
