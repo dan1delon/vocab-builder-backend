@@ -363,10 +363,17 @@ export const postAnswersController = async (req, res) => {
 
     const result = await Promise.all(
       answers.map(async (answer) => {
-        const word = await WordCollection.findById(answer._id);
+        const wordId = answer._id;
 
+        if (!wordId) {
+          throw new Error(
+            `No word ID provided for answer: ${JSON.stringify(answer)}`,
+          );
+        }
+
+        const word = await WordCollection.findById(wordId);
         if (!word) {
-          throw new Error(`Word not found for ID: ${answer._id}`);
+          throw new Error(`Word not found for ID: ${wordId}`);
         }
 
         const task = await TasksCollection.findOne({
@@ -409,6 +416,7 @@ export const postAnswersController = async (req, res) => {
 
     res.status(200).json(result);
   } catch (error) {
+    console.error('Error in postAnswersController:', error.message);
     res.status(500).json({ message: error.message });
   }
 };
