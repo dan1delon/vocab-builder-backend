@@ -403,6 +403,10 @@ export const postAnswersController = async (req, res) => {
           if (isCorrect) {
             await TasksCollection.findByIdAndDelete(taskDoc._id);
           }
+
+          await TasksCollection.findByIdAndUpdate(taskDoc._id, {
+            isDone: isCorrect,
+          });
         }
 
         results.push({
