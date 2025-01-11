@@ -41,7 +41,7 @@ export const createNewWordSchema = Joi.object({
       'idiom',
     )
     .required(),
-  isIrregular: Joi.boolean().required(),
+  isIrregular: Joi.boolean(),
 });
 
 export const editWordSchema = Joi.object({
