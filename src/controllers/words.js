@@ -321,11 +321,11 @@ export const getTasksController = async (req, res) => {
 
       const { en, ua } = task.wordId;
 
-      if (!taskMap.has(task.wordId)) {
-        taskMap.set(task.wordId, { en, ua, tasks: [] });
+      if (!taskMap.has(task.wordId.toString())) {
+        taskMap.set(task.wordId.toString(), { en, ua, tasks: [] });
       }
 
-      const existingTasks = taskMap.get(task.wordId).tasks;
+      const existingTasks = taskMap.get(task.wordId.toString()).tasks;
 
       if (task.task === 'en') {
         existingTasks.push({
