@@ -364,33 +364,23 @@ export const postAnswersController = async (req, res) => {
     const results = [];
 
     for (const answer of answers) {
+      const { _id: wordId, ua, en, task } = answer;
+
+      if (!wordId || !task || (!ua && !en)) {
+        results.push({ _id: wordId, ua, en, task, isDone: false });
+        continue;
+      }
+
       try {
-        const { _id: wordId, task, answer: userAnswer } = answer;
-
-        if (!wordId || !task || !userAnswer) {
-          results.push({ error: 'Missing data', wordId });
-          continue;
-        }
-
         const word = await WordCollection.findById(wordId);
         if (!word) {
-          results.push({ error: 'Word not found', wordId });
-          continue;
-        }
-
-        const taskDoc = await TasksCollection.findOne({
-          wordId,
-          task,
-          owner: req.user.id,
-        });
-        if (!taskDoc) {
-          results.push({ error: 'Task not found', wordId });
+          results.push({ _id: wordId, ua, en, task, isDone: false });
           continue;
         }
 
         const isCorrect =
-          (task === 'en' && word.en === userAnswer) ||
-          (task === 'ua' && word.ua === userAnswer);
+          (task === 'en' && word.en === en) ||
+          (task === 'ua' && word.ua === ua);
 
         if (isCorrect) {
           const newProgress = Math.min(word.progress + 50, 100);
@@ -399,27 +389,32 @@ export const postAnswersController = async (req, res) => {
           });
         }
 
-        if (taskDoc.isCompleted) {
+        const taskDoc = await TasksCollection.findOne({
+          wordId,
+          task,
+          owner: req.user.id,
+        });
+
+        if (taskDoc?.isCompleted) {
           await TasksCollection.findByIdAndDelete(taskDoc._id);
         }
 
         results.push({
-          wordId,
+          _id: wordId,
+          ua: word.ua,
+          en: word.en,
           task,
-          isCorrect,
-          progress: isCorrect
-            ? Math.min(word.progress + 50, 100)
-            : word.progress,
+          isDone: isCorrect,
         });
       } catch (err) {
         console.error('Error processing answer:', err.message);
-        results.push({ error: err.message, wordId: answer._id });
+        results.push({ _id: wordId, ua, en, task, isDone: false });
       }
     }
 
     res.status(200).json(results);
   } catch (error) {
     console.error('Error in postAnswersController:', error.message);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };
