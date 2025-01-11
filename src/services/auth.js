@@ -119,10 +119,19 @@ export const refreshUsersSession = async ({ sessionId, refreshToken }) => {
 
   await SessionsCollection.deleteOne({ _id: sessionId, refreshToken });
 
-  return await SessionsCollection.create({
+  const updatedSession = await SessionsCollection.create({
     userId: session.userId,
     ...newSession,
   });
+
+  const user = await UsersCollection.findOne({ _id: session.userId });
+
+  return {
+    _id: updatedSession._id,
+    name: user.name,
+    email: user.email,
+    token: updatedSession.accessToken,
+  };
 };
 
 export const requestResetToken = async (email) => {
