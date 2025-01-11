@@ -361,60 +361,63 @@ export const postAnswersController = async (req, res) => {
       return res.status(400).json({ message: 'Invalid data' });
     }
 
-    const result = await Promise.all(
-      answers.map(async (answer) => {
-        const wordId = answer._id;
+    const results = [];
 
-        if (!wordId) {
-          throw new Error(
-            `No word ID provided for answer: ${JSON.stringify(answer)}`,
-          );
+    for (const answer of answers) {
+      try {
+        const { _id: wordId, task, answer: userAnswer } = answer;
+
+        if (!wordId || !task || !userAnswer) {
+          results.push({ error: 'Missing data', wordId });
+          continue;
         }
 
         const word = await WordCollection.findById(wordId);
         if (!word) {
-          throw new Error(`Word not found for ID: ${wordId}`);
+          results.push({ error: 'Word not found', wordId });
+          continue;
         }
 
-        const task = await TasksCollection.findOne({
-          wordId: word._id,
-          task: answer.task,
+        const taskDoc = await TasksCollection.findOne({
+          wordId,
+          task,
           owner: req.user.id,
         });
-
-        if (!task) {
-          throw new Error(
-            `Task not found for word ID: ${word._id} and task type: ${answer.task}`,
-          );
+        if (!taskDoc) {
+          results.push({ error: 'Task not found', wordId });
+          continue;
         }
 
         const isCorrect =
-          (answer.task === 'en' && word.en === answer.answer) ||
-          (answer.task === 'ua' && word.ua === answer.answer);
+          (task === 'en' && word.en === userAnswer) ||
+          (task === 'ua' && word.ua === userAnswer);
 
         if (isCorrect) {
           const newProgress = Math.min(word.progress + 50, 100);
-          await WordCollection.findByIdAndUpdate(word._id, {
+          await WordCollection.findByIdAndUpdate(wordId, {
             progress: newProgress,
           });
         }
 
-        if (task.isCompleted) {
-          await TasksCollection.findByIdAndDelete(task._id);
+        if (taskDoc.isCompleted) {
+          await TasksCollection.findByIdAndDelete(taskDoc._id);
         }
 
-        return {
-          _id: word._id,
-          en: word.en,
-          ua: word.ua,
-          task: answer.task,
-          isDone: task.isCompleted,
-          progress: word.progress,
-        };
-      }),
-    );
+        results.push({
+          wordId,
+          task,
+          isCorrect,
+          progress: isCorrect
+            ? Math.min(word.progress + 50, 100)
+            : word.progress,
+        });
+      } catch (err) {
+        console.error('Error processing answer:', err.message);
+        results.push({ error: err.message, wordId: answer._id });
+      }
+    }
 
-    res.status(200).json(result);
+    res.status(200).json(results);
   } catch (error) {
     console.error('Error in postAnswersController:', error.message);
     res.status(500).json({ message: error.message });
