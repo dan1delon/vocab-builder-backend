@@ -379,11 +379,12 @@ export const postAnswersController = async (req, res) => {
         }
 
         const isCorrect =
-          (task === 'en' && word.en === en) ||
-          (task === 'ua' && word.ua === ua);
+          task === 'en' && word.en === en && task === 'ua' && word.ua === ua;
+
+        let newProgress = word.progress;
 
         if (isCorrect) {
-          const newProgress = Math.min(word.progress + 50, 100);
+          newProgress = Math.min(word.progress + 50, 100);
           await WordCollection.findByIdAndUpdate(wordId, {
             progress: newProgress,
           });
@@ -395,8 +396,10 @@ export const postAnswersController = async (req, res) => {
           owner: req.user.id,
         });
 
-        if (taskDoc?.isCompleted) {
-          await TasksCollection.findByIdAndDelete(taskDoc._id);
+        if (taskDoc) {
+          if (isCorrect) {
+            await TasksCollection.findByIdAndDelete(taskDoc._id);
+          }
         }
 
         results.push({
