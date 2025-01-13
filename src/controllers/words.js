@@ -244,12 +244,12 @@ export const addWordController = async (req, res) => {
 
     await TasksCollection.insertMany([
       {
-        wordId: newWord._id,
+        wordId: id,
         task: 'ua',
         owner: req.user.id,
       },
       {
-        wordId: newWord._id,
+        wordId: id,
         task: 'en',
         owner: req.user.id,
       },
@@ -298,6 +298,8 @@ export const getUsersStatisticsController = async (req, res) => {
 export const getTasksController = async (req, res) => {
   try {
     const userId = req.user.id;
+
+    await TasksCollection.deleteMany({ owner: userId, wordId: null });
 
     const tasks = await TasksCollection.find({
       owner: userId,
@@ -364,17 +366,22 @@ export const postAnswersController = async (req, res) => {
     const results = [];
 
     for (const answer of answers) {
-      const { _id: wordId, ua, en, task } = answer;
+      console.log('Answer:', answer);
+      const { _id, ua, en, task } = answer;
 
-      if (!wordId || !task || !(ua || en)) {
-        results.push({ _id: wordId, ua, en, task, isDone: false });
+      if (!_id || !task || !(ua || en)) {
+        console.log('Invalid data for answer:', answer);
+        results.push({ _id, ua, en, task, isDone: false });
         continue;
       }
 
       try {
-        const word = await WordCollection.findById(wordId);
+        console.log('Fetching word for _id:', _id);
+        const word = await WordCollection.findById(_id);
+        console.log('Fetched word:', word);
+
         if (!word) {
-          results.push({ _id: wordId, ua, en, task, isDone: false });
+          results.push({ _id, ua, en, task, isDone: false });
           continue;
         }
 
@@ -383,18 +390,19 @@ export const postAnswersController = async (req, res) => {
             word.en.trim().toLowerCase() === en.trim().toLowerCase()) ||
           (task === 'ua' &&
             word.ua.trim().toLowerCase() === ua.trim().toLowerCase());
+        console.log(isCorrect);
 
         let newProgress = word.progress;
 
         if (isCorrect) {
           newProgress = Math.min(word.progress + 50, 100);
-          await WordCollection.findByIdAndUpdate(wordId, {
+          await WordCollection.findByIdAndUpdate(_id, {
             progress: newProgress,
           });
         }
 
         const taskDoc = await TasksCollection.findOne({
-          wordId,
+          _id,
           task,
           owner: req.user.id,
         });
@@ -410,7 +418,7 @@ export const postAnswersController = async (req, res) => {
         }
 
         results.push({
-          _id: wordId,
+          _id: _id,
           ua: word.ua,
           en: word.en,
           task,
@@ -418,7 +426,7 @@ export const postAnswersController = async (req, res) => {
         });
       } catch (err) {
         console.error('Error processing answer:', err.message);
-        results.push({ _id: wordId, ua, en, task, isDone: false });
+        results.push({ _id, ua, en, task, isDone: false });
       }
     }
 
