@@ -165,7 +165,10 @@ export const getUsersWordsController = async (req, res) => {
       ...(isIrregular && { isIrregular: isIrregular === 'true' }),
     };
 
-    const words = await WordCollection.find(query, 'en ua category isIrregular')
+    const words = await WordCollection.find(
+      query,
+      'en ua category isIrregular progress',
+    )
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit));
 
