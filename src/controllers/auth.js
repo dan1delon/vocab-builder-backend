@@ -165,7 +165,9 @@ export const getUserInfoController = async (req, res, next) => {
     const { sessionId, refreshToken } = req.cookies;
 
     if (!sessionId || !refreshToken) {
-      throw createHttpError(400, 'Required cookies not provided');
+      return res.status(400).json({
+        message: 'Required cookies not provided',
+      });
     }
 
     const refreshedSession = await refreshUsersSession({
@@ -193,9 +195,8 @@ export const getUserInfoController = async (req, res, next) => {
     });
   } catch (error) {
     if (error.status === 401) {
-      res.status(401).json({ message: 'Unauthorized' });
-    } else {
-      next(error);
+      return res.status(401).json({ message: 'Unauthorized' });
     }
+    next(error);
   }
 };
