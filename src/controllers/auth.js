@@ -160,23 +160,24 @@ export const loginWithGoogleController = async (req, res) => {
   });
 };
 
-export const getUserInfoController = async (req, res, next) => {
+export const getUserInfoWithSessionRefreshController = async (
+  req,
+  res,
+  next,
+) => {
   try {
     const userId = req.user._id;
     const { sessionId, refreshToken } = req.cookies;
 
-    let token = null;
-
-    if (sessionId && refreshToken) {
-      const refreshedSession = await refreshUsersSession({
-        sessionId,
-        refreshToken,
-      });
-
-      setupSession(res, refreshedSession);
-
-      token = refreshedSession.token;
+    if (!sessionId || !refreshToken) {
+      throw createHttpError(400, 'Required cookies not provided');
     }
+
+    const refreshedSession = await refreshUsersSession({
+      sessionId,
+      refreshToken,
+    });
+    setupSession(res, refreshedSession);
 
     const user = await getUserInfo(userId);
 
@@ -184,7 +185,7 @@ export const getUserInfoController = async (req, res, next) => {
       _id: user._id,
       name: user.name,
       email: user.email,
-      token: token || user.accessToken || null,
+      token: refreshedSession.token,
     });
   } catch (error) {
     if (error.status === 401) {
