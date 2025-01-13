@@ -160,11 +160,7 @@ export const loginWithGoogleController = async (req, res) => {
   });
 };
 
-export const getUserInfoWithSessionRefreshController = async (
-  req,
-  res,
-  next,
-) => {
+export const getUserInfoController = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const { sessionId, refreshToken } = req.cookies;
