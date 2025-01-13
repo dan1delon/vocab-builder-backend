@@ -162,7 +162,6 @@ export const loginWithGoogleController = async (req, res) => {
 
 export const getUserInfoController = async (req, res, next) => {
   try {
-    const userId = req.user._id;
     const { sessionId, refreshToken } = req.cookies;
 
     if (!sessionId || !refreshToken) {
@@ -173,8 +172,17 @@ export const getUserInfoController = async (req, res, next) => {
       sessionId,
       refreshToken,
     });
+
     setupSession(res, refreshedSession);
 
+    if (!req.user || !req.user._id) {
+      return res.status(200).json({
+        message: 'Session refreshed',
+        token: refreshedSession.token,
+      });
+    }
+
+    const userId = req.user._id;
     const user = await getUserInfo(userId);
 
     res.status(200).json({
