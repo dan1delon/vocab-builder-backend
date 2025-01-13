@@ -277,18 +277,9 @@ export const getUsersStatisticsController = async (req, res) => {
     const totalWords = await WordCollection.countDocuments({
       owner: req.user.id,
     });
-    const totalTasks = await TasksCollection.countDocuments({
-      owner: req.user.id,
-    });
-    const completedTasks = await TasksCollection.countDocuments({
-      owner: req.user.id,
-      isCompleted: true,
-    });
 
     res.status(200).json({
-      totalWords,
-      totalTasks,
-      completedTasks,
+      totalCount: totalWords,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
