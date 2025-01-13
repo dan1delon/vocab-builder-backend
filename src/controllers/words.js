@@ -244,12 +244,12 @@ export const addWordController = async (req, res) => {
 
     await TasksCollection.insertMany([
       {
-        wordId: id,
+        wordId: newWord._id,
         task: 'ua',
         owner: req.user.id,
       },
       {
-        wordId: id,
+        wordId: newWord._id,
         task: 'en',
         owner: req.user.id,
       },
@@ -327,21 +327,12 @@ export const getTasksController = async (req, res) => {
         taskMap.set(task.wordId.toString(), { en, ua, tasks: [] });
       }
 
-      const existingTasks = taskMap.get(task.wordId.toString()).tasks;
-
-      if (task.task === 'en') {
-        existingTasks.push({
-          _id: task._id,
-          ua,
-          task: 'en',
-        });
-      } else if (task.task === 'ua') {
-        existingTasks.push({
-          _id: task._id,
-          en,
-          task: 'ua',
-        });
-      }
+      const taskData = taskMap.get(task.wordId.toString());
+      taskData.tasks.push({
+        _id: task._id,
+        task: task.task,
+        ...(task.task === 'en' ? { ua } : { en }),
+      });
     });
 
     const result = Array.from(taskMap.values()).flatMap(
@@ -366,59 +357,54 @@ export const postAnswersController = async (req, res) => {
     const results = [];
 
     for (const answer of answers) {
-      console.log('Answer:', answer);
       const { _id, ua, en, task } = answer;
 
       if (!_id || !task || !(ua || en)) {
-        console.log('Invalid data for answer:', answer);
         results.push({ _id, ua, en, task, isDone: false });
         continue;
       }
 
       try {
-        console.log('Fetching word for _id:', _id);
-        const word = await WordCollection.findById(_id);
-        console.log('Fetched word:', word);
+        const taskDoc = await TasksCollection.findById(_id).populate({
+          path: 'wordId',
+          select: 'en ua progress',
+        });
 
-        if (!word) {
+        if (!taskDoc || !taskDoc.wordId) {
           results.push({ _id, ua, en, task, isDone: false });
           continue;
         }
+
+        const word = taskDoc.wordId;
 
         const isCorrect =
           (task === 'en' &&
             word.en.trim().toLowerCase() === en.trim().toLowerCase()) ||
           (task === 'ua' &&
             word.ua.trim().toLowerCase() === ua.trim().toLowerCase());
-        console.log(isCorrect);
 
         let newProgress = word.progress;
 
         if (isCorrect) {
           newProgress = Math.min(word.progress + 50, 100);
-          await WordCollection.findByIdAndUpdate(_id, {
+
+          await WordCollection.findByIdAndUpdate(word._id, {
             progress: newProgress,
           });
-        }
 
-        const taskDoc = await TasksCollection.findOne({
-          _id,
-          task,
-          owner: req.user.id,
-        });
+          await TasksCollection.findByIdAndUpdate(_id, {
+            isCompleted: true,
+          });
 
-        if (taskDoc) {
-          if (isCorrect) {
-            await TasksCollection.findByIdAndDelete(taskDoc._id);
-          }
-
-          await TasksCollection.findByIdAndUpdate(taskDoc._id, {
-            isDone: isCorrect,
+          await TasksCollection.findByIdAndDelete(_id);
+        } else {
+          await TasksCollection.findByIdAndUpdate(_id, {
+            isCompleted: false,
           });
         }
 
         results.push({
-          _id: _id,
+          _id,
           ua: word.ua,
           en: word.en,
           task,

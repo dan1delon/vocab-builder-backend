@@ -17,10 +17,14 @@ const taskSchema = new Schema(
       enum: ['en', 'ua'],
       required: true,
     },
-    isCompleted: { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now },
+    isCompleted: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { versionKey: false, timestamps: true },
+  {
+    timestamps: true,
+  },
 );
 
 export const TasksCollection = model('tasks', taskSchema);
