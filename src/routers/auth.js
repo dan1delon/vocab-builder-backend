@@ -13,7 +13,6 @@ import {
   loginUserController,
   loginWithGoogleController,
   logoutUserController,
-  refreshUserSessionController,
   registerUserController,
   requestResetEmailController,
   resetPasswordController,
@@ -37,7 +36,7 @@ router.post(
 
 router.post('/signout', ctrlWrapper(logoutUserController));
 
-router.post('/refresh', ctrlWrapper(refreshUserSessionController));
+// router.post('/refresh', ctrlWrapper(refreshUserSessionController));
 
 router.get('/current', authenticate, ctrlWrapper(getUserInfoController));
 
