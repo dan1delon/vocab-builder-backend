@@ -1,4 +1,4 @@
-import createHttpError from 'http-errors';
+// import createHttpError from 'http-errors';
 import { ONE_DAY } from '../constants/constants.js';
 import {
   loginOrSignupWithGoogle,
@@ -101,22 +101,22 @@ const setupSession = (res, session) => {
   });
 };
 
-export const refreshUserSessionController = async (req, res) => {
-  const { sessionId, refreshToken } = req.cookies;
-  if (!sessionId || !refreshToken) {
-    throw createHttpError(400, 'Required cookies not provided');
-  }
+// export const refreshUserSessionController = async (req, res) => {
+//   const { sessionId, refreshToken } = req.cookies;
+//   if (!sessionId || !refreshToken) {
+//     throw createHttpError(400, 'Required cookies not provided');
+//   }
 
-  const session = await refreshUsersSession({ sessionId, refreshToken });
+//   const session = await refreshUsersSession({ sessionId, refreshToken });
 
-  setupSession(res, session);
+//   setupSession(res, session);
 
-  res.json({
-    status: 200,
-    message: 'Successfully refreshed a session!',
-    data: session,
-  });
-};
+//   res.json({
+//     status: 200,
+//     message: 'Successfully refreshed a session!',
+//     data: session,
+//   });
+// };
 
 export const requestResetEmailController = async (req, res) => {
   await requestResetToken(req.body.email);

@@ -16,16 +16,6 @@ import {
   validateCode,
 } from '../utils/googleOAuth2.js';
 
-const generateAccessToken = (userId) => {
-  return jwt.sign({ userId }, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn: '15m',
-  });
-};
-
-const generateRefreshToken = () => {
-  return crypto.randomBytes(64).toString('hex');
-};
-
 export const registerUser = async (payload) => {
   const user = await UsersCollection.findOne({ email: payload.email });
   if (user) throw createHttpError(409, 'Email in use');
@@ -122,9 +112,12 @@ export const refreshUsersSession = async ({ sessionId, refreshToken }) => {
     throw createHttpError(401, 'Refresh token expired');
   }
 
+  const newAccessToken = randomBytes(30).toString('base64');
+  const newRefreshToken = randomBytes(30).toString('base64');
+
   const updatedSession = {
-    accessToken: generateAccessToken(session.userId),
-    refreshToken: generateRefreshToken(),
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
     refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
   };
 
