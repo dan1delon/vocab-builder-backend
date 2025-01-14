@@ -174,7 +174,7 @@ export const getUserInfoController = async (req, res, next) => {
     });
     setupSession(res, refreshedSession);
 
-    const user = getUserInfo(refreshedSession.userId);
+    const user = await getUserInfo(refreshedSession.userId);
 
     res.status(200).json({
       _id: user._id,
