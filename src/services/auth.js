@@ -118,6 +118,7 @@ export const refreshUsersSession = async ({ sessionId, refreshToken }) => {
   const updatedSession = {
     accessToken: newAccessToken,
     refreshToken: newRefreshToken,
+    accessTokenValidUntil: new Date(Date.now() + FIFTEEN_MINUTES),
     refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
   };
 
