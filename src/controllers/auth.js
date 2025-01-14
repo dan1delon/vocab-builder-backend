@@ -172,7 +172,20 @@ export const getUserInfoController = async (req, res, next) => {
       sessionId,
       refreshToken,
     });
-    setupSession(res, refreshedSession);
+
+    res.cookie('refreshToken', refreshedSession.refreshToken, {
+      httpOnly: true,
+      expires: new Date(Date.now() + ONE_DAY),
+      sameSite: 'None',
+      secure: true,
+    });
+
+    res.cookie('sessionId', refreshedSession._id, {
+      httpOnly: true,
+      expires: new Date(Date.now() + ONE_DAY),
+      sameSite: 'None',
+      secure: true,
+    });
 
     const user = await getUserInfo(refreshedSession.userId);
 
