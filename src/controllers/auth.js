@@ -37,14 +37,14 @@ export const loginUserController = async (req, res, next) => {
       httpOnly: true,
       expires: new Date(Date.now() + ONE_DAY),
       sameSite: 'None',
-      secure: true,
+      secure: false,
     });
 
     res.cookie('sessionId', session._id, {
       httpOnly: true,
       expires: new Date(Date.now() + ONE_DAY),
       sameSite: 'None',
-      secure: true,
+      secure: false,
     });
 
     res.status(200).json({
@@ -71,12 +71,12 @@ export const logoutUserController = async (req, res, next) => {
 
     res.clearCookie('sessionId', {
       sameSite: 'None',
-      secure: true,
+      secure: false,
     });
 
     res.clearCookie('refreshToken', {
       sameSite: 'None',
-      secure: true,
+      secure: false,
     });
 
     res.status(200).json({ message: 'Sign out success' });
@@ -177,14 +177,14 @@ export const getUserInfoController = async (req, res, next) => {
       httpOnly: true,
       expires: new Date(Date.now() + ONE_DAY),
       sameSite: 'None',
-      secure: true,
+      secure: false,
     });
 
     res.cookie('sessionId', refreshedSession._id, {
       httpOnly: true,
       expires: new Date(Date.now() + ONE_DAY),
       sameSite: 'None',
-      secure: true,
+      secure: false,
     });
 
     const user = await getUserInfo(refreshedSession.userId);
