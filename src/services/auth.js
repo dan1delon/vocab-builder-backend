@@ -99,10 +99,13 @@ const createSession = () => {
 };
 
 export const refreshUsersSession = async ({ sessionId, refreshToken }) => {
+  console.log('Session ID:', sessionId, 'Refresh Token:', refreshToken);
+
   const session = await SessionsCollection.findOne({
     _id: sessionId,
     refreshToken,
   });
+  console.log('Session Found:', session);
 
   if (!session) {
     throw createHttpError(401, 'Session not found or invalid refresh token');
@@ -114,6 +117,7 @@ export const refreshUsersSession = async ({ sessionId, refreshToken }) => {
 
   const newAccessToken = randomBytes(30).toString('base64');
   const newRefreshToken = randomBytes(30).toString('base64');
+  console.log('New Tokens Generated:', { newAccessToken, newRefreshToken });
 
   const updatedSession = {
     accessToken: newAccessToken,
@@ -126,6 +130,7 @@ export const refreshUsersSession = async ({ sessionId, refreshToken }) => {
     { _id: sessionId },
     { $set: updatedSession },
   );
+  console.log('Updated Session:', updatedSession);
 
   const user = await UsersCollection.findOne({ _id: session.userId });
   if (!user) {

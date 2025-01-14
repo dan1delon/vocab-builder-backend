@@ -37,14 +37,14 @@ export const loginUserController = async (req, res, next) => {
       httpOnly: true,
       expires: new Date(Date.now() + ONE_DAY),
       sameSite: 'None',
-      secure: false,
+      secure: true,
     });
 
     res.cookie('sessionId', session._id, {
       httpOnly: true,
       expires: new Date(Date.now() + ONE_DAY),
       sameSite: 'None',
-      secure: false,
+      secure: true,
     });
 
     res.status(200).json({
@@ -71,12 +71,12 @@ export const logoutUserController = async (req, res, next) => {
 
     res.clearCookie('sessionId', {
       sameSite: 'None',
-      secure: false,
+      secure: true,
     });
 
     res.clearCookie('refreshToken', {
       sameSite: 'None',
-      secure: false,
+      secure: true,
     });
 
     res.status(200).json({ message: 'Sign out success' });
@@ -163,6 +163,7 @@ export const loginWithGoogleController = async (req, res) => {
 export const getUserInfoController = async (req, res, next) => {
   try {
     const { refreshToken, sessionId } = req.cookies;
+    console.log('Cookies:', { refreshToken, sessionId });
 
     if (!refreshToken || !sessionId) {
       return res.status(401).json({ message: 'Unauthorized: Missing cookies' });
@@ -172,22 +173,24 @@ export const getUserInfoController = async (req, res, next) => {
       sessionId,
       refreshToken,
     });
+    console.log('Refreshed Session:', refreshedSession);
 
     res.cookie('refreshToken', refreshedSession.refreshToken, {
       httpOnly: true,
       expires: new Date(Date.now() + ONE_DAY),
       sameSite: 'None',
-      secure: false,
+      secure: true,
     });
 
     res.cookie('sessionId', refreshedSession._id, {
       httpOnly: true,
       expires: new Date(Date.now() + ONE_DAY),
       sameSite: 'None',
-      secure: false,
+      secure: true,
     });
 
     const user = await getUserInfo(refreshedSession.userId);
+    console.log('User Info:', user);
 
     res.status(200).json({
       _id: user._id,
@@ -197,6 +200,7 @@ export const getUserInfoController = async (req, res, next) => {
     });
   } catch (error) {
     if (error.status) {
+      console.error('Error in getUserInfoController:', error);
       return res.status(error.status).json({ message: error.message });
     }
     next(error);

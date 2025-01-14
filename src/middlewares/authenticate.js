@@ -5,6 +5,7 @@ import { UsersCollection } from '../db/models/user.js';
 
 export const authenticate = async (req, res, next) => {
   const authHeader = req.get('Authorization');
+  console.log('Authorization Header:', authHeader);
 
   if (!authHeader) {
     next(createHttpError(401, 'Authorization header is required'));
@@ -12,6 +13,7 @@ export const authenticate = async (req, res, next) => {
   }
 
   const [bearer, token] = authHeader.split(' ');
+  console.log('Bearer:', bearer, 'Token:', token);
 
   if (bearer !== 'Bearer' || !token) {
     next(
@@ -21,6 +23,7 @@ export const authenticate = async (req, res, next) => {
   }
 
   const session = await SessionsCollection.findOne({ accessToken: token });
+  console.log('Session Found:', session);
 
   if (!session) {
     next(createHttpError(401, 'Session not found'));
@@ -29,6 +32,7 @@ export const authenticate = async (req, res, next) => {
 
   const isAccessTokenExpired =
     new Date() > new Date(session.accessTokenValidUntil);
+  console.log('Is Access Token Expired:', isAccessTokenExpired);
 
   if (isAccessTokenExpired) {
     next(createHttpError(401, 'Access token expired'));
@@ -36,6 +40,7 @@ export const authenticate = async (req, res, next) => {
   }
 
   const user = await UsersCollection.findById(session.userId);
+  console.log('User Found:', user);
 
   if (!user) {
     next(createHttpError(401, 'User not found'));
