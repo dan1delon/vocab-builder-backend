@@ -165,43 +165,26 @@ export const getUserInfoController = async (req, res, next) => {
     const { refreshToken, sessionId } = req.cookies;
 
     if (!refreshToken || !sessionId) {
-      return res
-        .status(401)
-        .json({ message: 'Unauthorized: Missing refreshToken or sessionId' });
-    }
-
-    if (!sessionId || !refreshToken) {
-      return res.status(400).json({
-        message: 'Required cookies not provided',
-      });
+      return res.status(401).json({ message: 'Unauthorized: Missing cookies' });
     }
 
     const refreshedSession = await refreshUsersSession({
       sessionId,
       refreshToken,
     });
-
     setupSession(res, refreshedSession);
 
-    if (!req.user || !req.user._id) {
-      return res.status(200).json({
-        message: 'Session refreshed',
-        token: refreshedSession.token,
-      });
-    }
-
-    const userId = req.user._id;
-    const user = await getUserInfo(userId);
+    const user = getUserInfo(refreshedSession.userId);
 
     res.status(200).json({
       _id: user._id,
       name: user.name,
       email: user.email,
-      token: refreshedSession.token,
+      token: refreshedSession.accessToken,
     });
   } catch (error) {
-    if (error.status === 401) {
-      return res.status(401).json({ message: 'Unauthorized' });
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message });
     }
     next(error);
   }

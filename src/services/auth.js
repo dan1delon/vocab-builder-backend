@@ -16,6 +16,16 @@ import {
   validateCode,
 } from '../utils/googleOAuth2.js';
 
+const generateAccessToken = (userId) => {
+  return jwt.sign({ userId }, process.env.ACCESS_TOKEN_SECRET, {
+    expiresIn: '15m',
+  });
+};
+
+const generateRefreshToken = () => {
+  return crypto.randomBytes(64).toString('hex');
+};
+
 export const registerUser = async (payload) => {
   const user = await UsersCollection.findOne({ email: payload.email });
   if (user) throw createHttpError(409, 'Email in use');
@@ -105,29 +115,34 @@ export const refreshUsersSession = async ({ sessionId, refreshToken }) => {
   });
 
   if (!session) {
-    throw createHttpError(401, 'Session not found');
+    throw createHttpError(401, 'Session not found or invalid refresh token');
   }
 
   if (new Date() > new Date(session.refreshTokenValidUntil)) {
     throw createHttpError(401, 'Refresh token expired');
   }
 
-  const newSession = createSession();
+  const updatedSession = {
+    accessToken: generateAccessToken(session.userId),
+    refreshToken: generateRefreshToken(),
+    refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
+  };
 
-  await SessionsCollection.deleteOne({ _id: sessionId });
-
-  const updatedSession = await SessionsCollection.create({
-    userId: session.userId,
-    ...newSession,
-  });
+  await SessionsCollection.updateOne(
+    { _id: sessionId },
+    { $set: updatedSession },
+  );
 
   const user = await UsersCollection.findOne({ _id: session.userId });
+  if (!user) {
+    throw createHttpError(404, 'User not found');
+  }
 
   return {
-    _id: updatedSession._id,
+    ...updatedSession,
+    userId: user._id,
     name: user.name,
     email: user.email,
-    token: updatedSession.accessToken,
   };
 };
 
