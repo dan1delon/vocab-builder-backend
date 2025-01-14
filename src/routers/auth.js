@@ -36,9 +36,9 @@ router.post(
 
 router.post('/signout', ctrlWrapper(logoutUserController));
 
-// router.post('/refresh', ctrlWrapper(refreshUserSessionController));
-
 router.get('/current', authenticate, ctrlWrapper(getUserInfoController));
+
+// router.post('/refresh', ctrlWrapper(refreshUserSessionController));
 
 router.post(
   '/send-reset-email',
