@@ -90,14 +90,14 @@ const setupSession = (res, session) => {
     httpOnly: true,
     expires: new Date(Date.now() + ONE_DAY),
     sameSite: 'None',
-    secure: true,
+    secure: false,
   });
 
   res.cookie('sessionId', session._id, {
     httpOnly: true,
     expires: new Date(Date.now() + ONE_DAY),
     sameSite: 'None',
-    secure: true,
+    secure: false,
   });
 };
 
@@ -162,7 +162,13 @@ export const loginWithGoogleController = async (req, res) => {
 
 export const getUserInfoController = async (req, res, next) => {
   try {
-    const { sessionId, refreshToken } = req.cookies;
+    const { refreshToken, sessionId } = req.cookies;
+
+    if (!refreshToken || !sessionId) {
+      return res
+        .status(401)
+        .json({ message: 'Unauthorized: Missing refreshToken or sessionId' });
+    }
 
     if (!sessionId || !refreshToken) {
       return res.status(400).json({
