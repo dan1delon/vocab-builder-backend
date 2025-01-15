@@ -74,10 +74,6 @@ export const logoutUserController = async (req, res, next) => {
 };
 
 const setupSession = (res, session) => {
-  if (!session._id) {
-    throw new Error('Cannot set cookies: sessionId is undefined');
-  }
-
   res.cookie('refreshToken', session.refreshToken, {
     httpOnly: true,
     expires: new Date(Date.now() + ONE_DAY),
@@ -85,7 +81,7 @@ const setupSession = (res, session) => {
     secure: true,
   });
 
-  res.cookie('sessionId', session._id.toString(), {
+  res.cookie('sessionId', session._id, {
     httpOnly: true,
     expires: new Date(Date.now() + ONE_DAY),
     sameSite: 'None',
@@ -93,44 +89,23 @@ const setupSession = (res, session) => {
   });
 };
 
-export const refreshUserSessionController = async (req, res, next) => {
-  try {
-    const { sessionId, refreshToken } = req.cookies;
-
-    if (!sessionId || !refreshToken) {
-      console.error('Missing cookies:', { sessionId, refreshToken });
-      throw createHttpError(400, 'Required cookies not provided');
-    }
-
-    const session = await refreshUsersSession({ sessionId, refreshToken });
-
-    console.log('New session data:', session);
-
-    res.cookie('refreshToken', session.refreshToken, {
-      httpOnly: true,
-      expires: new Date(Date.now() + ONE_DAY),
-      sameSite: 'None',
-      secure: true,
-    });
-
-    res.cookie('sessionId', session._id.toString(), {
-      httpOnly: true,
-      expires: new Date(Date.now() + ONE_DAY),
-      sameSite: 'None',
-      secure: true,
-    });
-
-    res.json({
-      status: 200,
-      message: 'Successfully refreshed the session!',
-      data: {
-        accessToken: session.accessToken,
-      },
-    });
-  } catch (error) {
-    console.error('Error in refreshUserSessionController:', error);
-    next(error);
+export const refreshUserSessionController = async (req, res) => {
+  const { sessionId, refreshToken } = req.cookies;
+  if (!sessionId || !refreshToken) {
+    throw createHttpError(400, 'Required cookies not provided');
   }
+
+  const session = await refreshUsersSession({ sessionId, refreshToken });
+
+  setupSession(res, session);
+
+  res.json({
+    status: 200,
+    message: 'Successfully refreshed a session!',
+    data: {
+      accessToken: session.accessToken,
+    },
+  });
 };
 
 export const requestResetEmailController = async (req, res) => {
