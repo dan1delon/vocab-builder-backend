@@ -33,19 +33,7 @@ export const loginUserController = async (req, res, next) => {
   try {
     const session = await loginUser(req.body);
 
-    res.cookie('refreshToken', session.refreshToken, {
-      httpOnly: true,
-      expires: new Date(Date.now() + ONE_DAY),
-      sameSite: 'None',
-      secure: true,
-    });
-
-    res.cookie('sessionId', session._id, {
-      httpOnly: true,
-      expires: new Date(Date.now() + ONE_DAY),
-      sameSite: 'None',
-      secure: true,
-    });
+    setupSession(res, session);
 
     res.status(200).json({
       email: session.user.email,
@@ -86,6 +74,10 @@ export const logoutUserController = async (req, res, next) => {
 };
 
 const setupSession = (res, session) => {
+  if (!session._id) {
+    throw new Error('Cannot set cookies: sessionId is undefined');
+  }
+
   res.cookie('refreshToken', session.refreshToken, {
     httpOnly: true,
     expires: new Date(Date.now() + ONE_DAY),
@@ -93,7 +85,7 @@ const setupSession = (res, session) => {
     secure: true,
   });
 
-  res.cookie('sessionId', session._id, {
+  res.cookie('sessionId', session._id.toString(), {
     httpOnly: true,
     expires: new Date(Date.now() + ONE_DAY),
     sameSite: 'None',

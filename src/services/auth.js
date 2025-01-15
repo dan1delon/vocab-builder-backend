@@ -61,7 +61,10 @@ export const loginUser = async (payload) => {
     throw createHttpError(401, 'Unauthorized');
   }
 
-  await SessionsCollection.deleteOne({ userId: user._id });
+  await SessionsCollection.deleteMany({
+    userId: user._id,
+    _id: { $ne: session._id },
+  });
 
   const accessToken = randomBytes(30).toString('base64');
   const refreshToken = randomBytes(30).toString('base64');
@@ -73,6 +76,10 @@ export const loginUser = async (payload) => {
     accessTokenValidUntil: new Date(Date.now() + FIFTEEN_MINUTES),
     refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
   });
+
+  if (!session._id) {
+    throw new Error('Failed to create session: _id is missing');
+  }
 
   session.user = {
     email: user.email,
