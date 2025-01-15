@@ -98,10 +98,13 @@ export const refreshUserSessionController = async (req, res, next) => {
     const { sessionId, refreshToken } = req.cookies;
 
     if (!sessionId || !refreshToken) {
+      console.error('Missing cookies:', { sessionId, refreshToken });
       throw createHttpError(400, 'Required cookies not provided');
     }
 
     const session = await refreshUsersSession({ sessionId, refreshToken });
+
+    console.log('New session data:', session);
 
     res.cookie('refreshToken', session.refreshToken, {
       httpOnly: true,
@@ -125,6 +128,7 @@ export const refreshUserSessionController = async (req, res, next) => {
       },
     });
   } catch (error) {
+    console.error('Error in refreshUserSessionController:', error);
     next(error);
   }
 };

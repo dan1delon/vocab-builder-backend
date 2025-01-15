@@ -72,6 +72,7 @@ export const loginUser = async (payload) => {
     accessTokenValidUntil: new Date(Date.now() + FIFTEEN_MINUTES),
     refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
   });
+  console.log('Session after creation:', session);
 
   if (!session._id) {
     throw new Error('Failed to create session: _id is missing');
@@ -79,10 +80,11 @@ export const loginUser = async (payload) => {
 
   console.log('Session created:', session);
 
-  await SessionsCollection.deleteMany({
+  const result = await SessionsCollection.deleteMany({
     userId: user._id,
     _id: { $ne: session._id },
   });
+  console.log('Deleted old sessions:', result);
 
   session.user = {
     email: user.email,
@@ -97,8 +99,8 @@ export const logoutUser = async (sessionId) => {
 };
 
 const createSession = () => {
-  const accessToken = randomBytes(30).toString('base64');
-  const refreshToken = randomBytes(30).toString('base64');
+  const accessToken = randomBytes(30).toString('base64url');
+  const refreshToken = randomBytes(30).toString('base64url');
 
   return {
     accessToken,
@@ -109,49 +111,39 @@ const createSession = () => {
 };
 
 export const refreshUsersSession = async ({ sessionId, refreshToken }) => {
-  console.log('Session ID:', sessionId, 'Refresh Token:', refreshToken);
+  console.log('Session ID:', sessionId);
+  if (!sessionId) {
+    throw createHttpError(400, 'Session ID is required');
+  }
 
   const session = await SessionsCollection.findOne({
     _id: sessionId,
     refreshToken,
   });
-  console.log('Session Found:', session);
-
   if (!session) {
-    throw createHttpError(401, 'Session not found or invalid refresh token');
+    throw createHttpError(401, 'Session not found or refresh token is invalid');
   }
 
-  if (new Date() > new Date(session.refreshTokenValidUntil)) {
-    throw createHttpError(401, 'Refresh token expired');
+  if (session.refreshTokenValidUntil < new Date()) {
+    throw createHttpError(401, 'Refresh token has expired');
   }
 
-  const newAccessToken = randomBytes(30).toString('base64');
-  const newRefreshToken = randomBytes(30).toString('base64');
-  console.log('New Tokens Generated:', { newAccessToken, newRefreshToken });
+  await SessionsCollection.findByIdAndDelete(sessionId);
 
-  const updatedSession = {
+  const newAccessToken = randomBytes(30).toString('base64url');
+  const newRefreshToken = randomBytes(30).toString('base64url');
+
+  const newSession = await SessionsCollection.create({
     accessToken: newAccessToken,
     refreshToken: newRefreshToken,
     accessTokenValidUntil: new Date(Date.now() + FIFTEEN_MINUTES),
     refreshTokenValidUntil: new Date(Date.now() + ONE_DAY),
-  };
-
-  await SessionsCollection.updateOne(
-    { _id: sessionId },
-    { $set: updatedSession },
-  );
-  console.log('Updated Session:', updatedSession);
-
-  const user = await UsersCollection.findOne({ _id: session.userId });
-  if (!user) {
-    throw createHttpError(404, 'User not found');
-  }
+  });
 
   return {
-    ...updatedSession,
-    userId: user._id,
-    name: user.name,
-    email: user.email,
+    _id: newSession._id,
+    accessToken: newSession.accessToken,
+    refreshToken: newSession.refreshToken,
   };
 };
 
