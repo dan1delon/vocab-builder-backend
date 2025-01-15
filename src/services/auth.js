@@ -51,23 +51,19 @@ export const registerUser = async (payload) => {
 
 export const loginUser = async (payload) => {
   const user = await UsersCollection.findOne({ email: payload.email });
-  console.log(user);
+  console.log('User found:', user);
+
   if (!user) {
     throw createHttpError(404, 'User not found');
   }
-  const isEqual = await bcrypt.compare(payload.password, user.password);
 
+  const isEqual = await bcrypt.compare(payload.password, user.password);
   if (!isEqual) {
     throw createHttpError(401, 'Unauthorized');
   }
 
-  await SessionsCollection.deleteMany({
-    userId: user._id,
-    _id: { $ne: session._id },
-  });
-
-  const accessToken = randomBytes(30).toString('base64');
-  const refreshToken = randomBytes(30).toString('base64');
+  const accessToken = randomBytes(30).toString('base64url');
+  const refreshToken = randomBytes(30).toString('base64url');
 
   const session = await SessionsCollection.create({
     userId: user._id,
@@ -80,6 +76,13 @@ export const loginUser = async (payload) => {
   if (!session._id) {
     throw new Error('Failed to create session: _id is missing');
   }
+
+  console.log('Session created:', session);
+
+  await SessionsCollection.deleteMany({
+    userId: user._id,
+    _id: { $ne: session._id },
+  });
 
   session.user = {
     email: user.email,

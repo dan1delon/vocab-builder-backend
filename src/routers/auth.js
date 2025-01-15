@@ -16,6 +16,7 @@ import {
   registerUserController,
   requestResetEmailController,
   resetPasswordController,
+  refreshUserSessionController,
 } from '../controllers/auth.js';
 import { validateBody } from '../middlewares/validateBody.js';
 import { authenticate } from '../middlewares/authenticate.js';
@@ -38,7 +39,7 @@ router.post('/signout', ctrlWrapper(logoutUserController));
 
 router.get('/current', authenticate, ctrlWrapper(getUserInfoController));
 
-// router.post('/refresh', ctrlWrapper(refreshUserSessionController));
+router.post('/refresh', ctrlWrapper(refreshUserSessionController));
 
 router.post(
   '/send-reset-email',

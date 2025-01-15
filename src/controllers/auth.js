@@ -1,4 +1,4 @@
-// import createHttpError from 'http-errors';
+import createHttpError from 'http-errors';
 import { ONE_DAY } from '../constants/constants.js';
 import {
   loginOrSignupWithGoogle,
@@ -32,7 +32,6 @@ export const registerUserController = async (req, res, next) => {
 export const loginUserController = async (req, res, next) => {
   try {
     const session = await loginUser(req.body);
-
     setupSession(res, session);
 
     res.status(200).json({
@@ -44,8 +43,9 @@ export const loginUserController = async (req, res, next) => {
     if (error.status === 401) {
       res.status(401).json({ message: 'Email or password invalid' });
     } else if (error.status === 404) {
-      res.status(404).json({ message: 'Service not found' });
+      res.status(404).json({ message: 'User not found' });
     } else {
+      console.error(error);
       next(error);
     }
   }
@@ -93,22 +93,41 @@ const setupSession = (res, session) => {
   });
 };
 
-// export const refreshUserSessionController = async (req, res) => {
-//   const { sessionId, refreshToken } = req.cookies;
-//   if (!sessionId || !refreshToken) {
-//     throw createHttpError(400, 'Required cookies not provided');
-//   }
+export const refreshUserSessionController = async (req, res, next) => {
+  try {
+    const { sessionId, refreshToken } = req.cookies;
 
-//   const session = await refreshUsersSession({ sessionId, refreshToken });
+    if (!sessionId || !refreshToken) {
+      throw createHttpError(400, 'Required cookies not provided');
+    }
 
-//   setupSession(res, session);
+    const session = await refreshUsersSession({ sessionId, refreshToken });
 
-//   res.json({
-//     status: 200,
-//     message: 'Successfully refreshed a session!',
-//     data: session,
-//   });
-// };
+    res.cookie('refreshToken', session.refreshToken, {
+      httpOnly: true,
+      expires: new Date(Date.now() + ONE_DAY),
+      sameSite: 'None',
+      secure: true,
+    });
+
+    res.cookie('sessionId', session._id.toString(), {
+      httpOnly: true,
+      expires: new Date(Date.now() + ONE_DAY),
+      sameSite: 'None',
+      secure: true,
+    });
+
+    res.json({
+      status: 200,
+      message: 'Successfully refreshed the session!',
+      data: {
+        accessToken: session.accessToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const requestResetEmailController = async (req, res) => {
   await requestResetToken(req.body.email);
@@ -154,47 +173,14 @@ export const loginWithGoogleController = async (req, res) => {
 
 export const getUserInfoController = async (req, res, next) => {
   try {
-    const { refreshToken, sessionId } = req.cookies;
-    console.log('Cookies:', { refreshToken, sessionId });
-
-    if (!refreshToken || !sessionId) {
-      return res.status(401).json({ message: 'Unauthorized: Missing cookies' });
-    }
-
-    const refreshedSession = await refreshUsersSession({
-      sessionId,
-      refreshToken,
-    });
-    console.log('Refreshed Session:', refreshedSession);
-
-    res.cookie('refreshToken', refreshedSession.refreshToken, {
-      httpOnly: true,
-      expires: new Date(Date.now() + ONE_DAY),
-      sameSite: 'None',
-      secure: true,
-    });
-
-    res.cookie('sessionId', refreshedSession._id, {
-      httpOnly: true,
-      expires: new Date(Date.now() + ONE_DAY),
-      sameSite: 'None',
-      secure: true,
-    });
-
-    const user = await getUserInfo(refreshedSession.userId);
-    console.log('User Info:', user);
+    const user = await getUserInfo(req.user._id);
 
     res.status(200).json({
       _id: user._id,
       name: user.name,
       email: user.email,
-      token: refreshedSession.accessToken,
     });
   } catch (error) {
-    if (error.status) {
-      console.error('Error in getUserInfoController:', error);
-      return res.status(error.status).json({ message: error.message });
-    }
     next(error);
   }
 };
