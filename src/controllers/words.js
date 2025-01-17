@@ -130,7 +130,7 @@ export const getAllWordsController = async (req, res) => {
 
     const query = {
       ...(keyword && { en: { $regex: keyword, $options: 'i' } }),
-      ...(category && { category }),
+      ...(category && category !== 'All' && { category }),
       ...(isIrregular && { isIrregular: isIrregular === 'true' }),
     };
 
@@ -161,7 +161,7 @@ export const getUsersWordsController = async (req, res) => {
     const query = {
       owner: req.user.id,
       ...(keyword && { en: { $regex: keyword, $options: 'i' } }),
-      ...(category && { category }),
+      ...(category && category !== 'All' && { category }),
       ...(isIrregular && { isIrregular: isIrregular === 'true' }),
     };
 
