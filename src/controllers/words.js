@@ -91,7 +91,7 @@ export const editWordController = async (req, res) => {
 
     const word = await WordCollection.findOneAndUpdate(
       { _id: id, owner: req.user.id },
-      { en, ua, category, isIrregular },
+      { en, ua, category, isIrregular, progress: 0 },
       { new: true },
     );
 
