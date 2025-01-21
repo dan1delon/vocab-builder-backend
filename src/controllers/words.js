@@ -365,7 +365,14 @@ export const postAnswersController = async (req, res) => {
       const { _id, ua, en, task } = answer;
 
       if (!_id || !task || !(ua || en)) {
-        results.push({ _id, ua, en, task, isDone: false });
+        results.push({
+          _id,
+          ua,
+          en,
+          task,
+          userAnswer: task === 'en' ? en : ua,
+          isDone: false,
+        });
         continue;
       }
 
@@ -376,7 +383,14 @@ export const postAnswersController = async (req, res) => {
         });
 
         if (!taskDoc || !taskDoc.wordId) {
-          results.push({ _id, ua, en, task, isDone: false });
+          results.push({
+            _id,
+            ua,
+            en,
+            task,
+            userAnswer: task === 'en' ? en : ua,
+            isDone: false,
+          });
           continue;
         }
 
@@ -413,11 +427,19 @@ export const postAnswersController = async (req, res) => {
           ua: word.ua,
           en: word.en,
           task,
+          userAnswer: task === 'en' ? en : ua,
           isDone: isCorrect,
         });
       } catch (err) {
         console.error('Error processing answer:', err.message);
-        results.push({ _id, ua, en, task, isDone: false });
+        results.push({
+          _id,
+          ua,
+          en,
+          task,
+          userAnswer: task === 'en' ? en : ua,
+          isDone: false,
+        });
       }
     }
 
