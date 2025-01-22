@@ -180,7 +180,7 @@ export const getUsersWordsController = async (req, res) => {
       query,
       'en ua category isIrregular progress',
     )
-      .sort({ progress: 1 })
+      .sort({ progress: 1, createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit));
 
