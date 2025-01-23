@@ -143,7 +143,6 @@ export const getAllWordsController = async (req, res) => {
       query,
       'en ua category isIrregular',
     )
-      .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit));
 
