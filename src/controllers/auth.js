@@ -90,22 +90,50 @@ const setupSession = (res, session) => {
 };
 
 export const refreshUserSessionController = async (req, res) => {
-  const { sessionId, refreshToken } = req.cookies;
-  if (!sessionId || !refreshToken) {
-    throw createHttpError(400, 'Required cookies not provided');
+  const { sessionId, refreshToken: cookieRefreshToken } = req.cookies;
+  const { refreshToken: bodyRefreshToken } = req.body;
+  const authHeader = req.headers.authorization;
+
+  let session;
+  try {
+    if (sessionId && cookieRefreshToken) {
+      session = await refreshUsersSession({
+        sessionId,
+        refreshToken: cookieRefreshToken,
+      });
+    } else if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      if (!token) {
+        throw createHttpError(400, 'Authorization header is invalid');
+      }
+      session = await refreshUsersSession({
+        sessionId,
+        refreshToken: token,
+      });
+    } else if (bodyRefreshToken) {
+      session = await refreshUsersSession({
+        sessionId,
+        refreshToken: bodyRefreshToken,
+      });
+    } else {
+      throw createHttpError(400, 'Required data not provided');
+    }
+
+    setupSession(res, session);
+
+    res.json({
+      status: 200,
+      message: 'Successfully refreshed a session!',
+      data: {
+        accessToken: session.accessToken,
+      },
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({
+      status: error.status || 500,
+      message: error.message,
+    });
   }
-
-  const session = await refreshUsersSession({ sessionId, refreshToken });
-
-  setupSession(res, session);
-
-  res.json({
-    status: 200,
-    message: 'Successfully refreshed a session!',
-    data: {
-      accessToken: session.accessToken,
-    },
-  });
 };
 
 export const requestResetEmailController = async (req, res) => {
