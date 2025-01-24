@@ -19,7 +19,10 @@ export const setupServer = () => {
   app.use(express.json());
   app.use(
     cors({
-      origin: 'https://vocab-builder-zeta.vercel.app',
+      origin: [
+        'https://vocab-builder-zeta.vercel.app',
+        'http://localhost:5173',
+      ],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
       allowedHeaders: ['Content-Type', 'Authorization'],
       credentials: true,
