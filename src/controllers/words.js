@@ -409,11 +409,17 @@ export const postAnswersController = async (req, res) => {
 
         const word = taskDoc.wordId;
 
-        const isCorrect =
-          (task === 'en' &&
-            word.en.trim().toLowerCase() === en.trim().toLowerCase()) ||
-          (task === 'ua' &&
-            word.ua.trim().toLowerCase() === ua.trim().toLowerCase());
+        const normalizeApostrophes = (str) =>
+          str.replace(/[`'’]/g, "'").trim().toLowerCase();
+
+        const normalizedUserAnswer =
+          task === 'en' ? normalizeApostrophes(en) : normalizeApostrophes(ua);
+        const normalizedCorrectAnswer =
+          task === 'en'
+            ? normalizeApostrophes(word.en)
+            : normalizeApostrophes(word.ua);
+
+        const isCorrect = normalizedUserAnswer === normalizedCorrectAnswer;
 
         let newProgress = word.progress;
 
