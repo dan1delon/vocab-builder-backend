@@ -2,8 +2,8 @@ import { model, Schema } from 'mongoose';
 
 const globalWordsSchema = new Schema(
   {
-    en: { type: String, required: true },
-    ua: { type: String, required: true },
+    en: { type: String, required: true, index: 'text' },
+    ua: { type: String, required: true, index: 'text' },
     category: {
       type: String,
       enum: [
@@ -21,11 +21,15 @@ const globalWordsSchema = new Schema(
         'idiom',
       ],
       required: true,
+      index: true,
     },
-    isIrregular: { type: Boolean, default: false },
+    isIrregular: { type: Boolean, default: false, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'users', required: true },
   },
   { timestamps: true },
 );
+
+globalWordsSchema.index({ createdAt: -1 });
+globalWordsSchema.index({ category: 1, isIrregular: 1, createdAt: -1 });
 
 export const GlobalWordCollection = model('global-words', globalWordsSchema);

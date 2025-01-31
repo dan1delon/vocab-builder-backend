@@ -127,6 +127,8 @@ export const editWordController = async (req, res) => {
 export const getAllWordsController = async (req, res) => {
   try {
     const { keyword, category, isIrregular, page = 1, limit = 7 } = req.query;
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
 
     const query = {
       ...(keyword && {
@@ -139,21 +141,20 @@ export const getAllWordsController = async (req, res) => {
       ...(isIrregular && { isIrregular: isIrregular === 'true' }),
     };
 
-    const words = await GlobalWordCollection.find(
-      query,
-      'en ua category isIrregular',
-    )
-      // .sort({ createdAt: -1, updatedAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
-
-    const total = await GlobalWordCollection.countDocuments(query);
+    const [words, total] = await Promise.all([
+      GlobalWordCollection.find(query, 'en ua category isIrregular')
+        .sort({ createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      GlobalWordCollection.countDocuments(query),
+    ]);
 
     res.status(200).json({
       results: words,
-      totalPages: Math.ceil(total / limit),
-      page: Number(page),
-      perPage: Number(limit),
+      totalPages: Math.ceil(total / limitNum),
+      page: pageNum,
+      perPage: limitNum,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -163,6 +164,8 @@ export const getAllWordsController = async (req, res) => {
 export const getUsersWordsController = async (req, res) => {
   try {
     const { keyword, category, isIrregular, page = 1, limit = 7 } = req.query;
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
 
     const query = {
       owner: req.user.id,
@@ -176,21 +179,20 @@ export const getUsersWordsController = async (req, res) => {
       ...(isIrregular && { isIrregular: isIrregular === 'true' }),
     };
 
-    const words = await WordCollection.find(
-      query,
-      'en ua category isIrregular progress',
-    )
-      .sort({ progress: 1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
-
-    const total = await WordCollection.countDocuments(query);
+    const [words, total] = await Promise.all([
+      WordCollection.find(query, 'en ua category isIrregular progress')
+        .sort({ progress: 1, createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      WordCollection.countDocuments(query),
+    ]);
 
     res.status(200).json({
       results: words,
-      totalPages: Math.ceil(total / limit),
-      page: Number(page),
-      perPage: Number(limit),
+      totalPages: Math.ceil(total / limitNum),
+      page: pageNum,
+      perPage: limitNum,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -361,28 +363,37 @@ export const postAnswersController = async (req, res) => {
       return res.status(400).json({ message: 'Invalid data' });
     }
 
+    const taskIds = answers.map((answer) => answer._id).filter(Boolean);
+
+    const tasks = await TasksCollection.find({
+      _id: { $in: taskIds },
+    }).populate({
+      path: 'wordId',
+      select: 'en ua progress',
+    });
+
+    const taskMap = new Map(tasks.map((task) => [task._id.toString(), task]));
+
     const results = [];
+    const bulkUpdateOps = [];
 
-    for (const answer of answers) {
-      const { _id, ua, en, task } = answer;
+    await Promise.all(
+      answers.map(async (answer) => {
+        const { _id, ua, en, task } = answer;
 
-      if (!_id || !task || !(ua || en)) {
-        results.push({
-          _id,
-          ua,
-          en,
-          task,
-          userAnswer: task === 'en' ? en : ua,
-          isDone: false,
-        });
-        continue;
-      }
+        if (!_id || !task || !(ua || en)) {
+          results.push({
+            _id,
+            ua,
+            en,
+            task,
+            userAnswer: task === 'en' ? en : ua,
+            isDone: false,
+          });
+          return;
+        }
 
-      try {
-        const taskDoc = await TasksCollection.findById(_id).populate({
-          path: 'wordId',
-          select: 'en ua progress',
-        });
+        const taskDoc = taskMap.get(_id);
 
         if (!taskDoc || !taskDoc.wordId) {
           results.push({
@@ -393,7 +404,7 @@ export const postAnswersController = async (req, res) => {
             userAnswer: task === 'en' ? en : ua,
             isDone: false,
           });
-          continue;
+          return;
         }
 
         const word = taskDoc.wordId;
@@ -409,18 +420,24 @@ export const postAnswersController = async (req, res) => {
         if (isCorrect) {
           newProgress = Math.min(word.progress + 50, 100);
 
-          await WordCollection.findByIdAndUpdate(word._id, {
-            progress: newProgress,
+          bulkUpdateOps.push({
+            updateOne: {
+              filter: { _id: word._id },
+              update: { $set: { progress: newProgress } },
+            },
           });
 
-          await TasksCollection.findByIdAndUpdate(_id, {
-            isCompleted: true,
+          bulkUpdateOps.push({
+            deleteOne: {
+              filter: { _id: taskDoc._id },
+            },
           });
-
-          await TasksCollection.findByIdAndDelete(_id);
         } else {
-          await TasksCollection.findByIdAndUpdate(_id, {
-            isCompleted: false,
+          bulkUpdateOps.push({
+            updateOne: {
+              filter: { _id: taskDoc._id },
+              update: { $set: { isCompleted: false } },
+            },
           });
         }
 
@@ -432,17 +449,11 @@ export const postAnswersController = async (req, res) => {
           userAnswer: task === 'en' ? en : ua,
           isDone: isCorrect,
         });
-      } catch (err) {
-        console.error('Error processing answer:', err.message);
-        results.push({
-          _id,
-          ua,
-          en,
-          task,
-          userAnswer: task === 'en' ? en : ua,
-          isDone: false,
-        });
-      }
+      }),
+    );
+
+    if (bulkUpdateOps.length > 0) {
+      await WordCollection.bulkWrite(bulkUpdateOps);
     }
 
     res.status(200).json(results);
